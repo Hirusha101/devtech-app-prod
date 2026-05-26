@@ -3,34 +3,27 @@ name: "DevSecOps Enterprise Security & Compliance Pipeline"
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
 
 jobs:
-  Security-Inspection:
-    name: "Automated Vulnerability & Compliance Scan"
+  Security-And-Deployment:
+    name: "Automated Scan & Cloud Deployment"
     runs-on: ubuntu-latest
 
     steps:
     - name: "Step 1: Check out Application Source Code"
       uses: actions/checkout@v3
 
-    - name: "Step 2: Run Secret Scanning Guard (Detect Token Leaks)"
-      uses: Gitleaks/gitleaks-action@v2
-      env:
-        GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # Runs standard baseline scans
-      continue-on-error: true # Allows the pipeline to finish so you can gather all report metrics
-
-    - name: "Step 3: Run Software Composition Analysis (SCA via Aqua Security Trivy)"
+    - name: "Step 2: Run Software Composition Analysis (SCA via Trivy)"
       uses: aquasecurity/trivy-action@master
       with:
         scan-type: 'fs'
         security-checks: 'vuln,secret,config'
         format: 'table'
-        exit-code: '0' # Keeps pipeline active for testing; change to '1' to enforce hard failure blocks
+        exit-code: '1' # CRITICAL HARD GATE: Enforces a pipeline failure if vulnerabilities are found!
         severity: 'CRITICAL,HIGH'
 
-    - name: "Step 4: Verify Compliance & Package Readiness"
-      run: |
-        echo "Analyzing security scanning artifacts..."
-        echo "Vulnerability posture check complete. Compiling metrics for deployment ledger..."
+    - name: "Step 5: Secure Production Deployment to Azure"
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'software-company-prod-app' # Must match your exact Azure App Service name
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
